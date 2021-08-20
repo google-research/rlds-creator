@@ -1,0 +1,322 @@
+// Copyright 2021 RLDSCreator Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Protocol buffer message for study specifications.
+syntax = "proto2";
+
+package rlds_creator;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// Information about a user.
+message User {
+  // Email of the user.
+  optional string email = 1;
+}
+
+// Specification of an environment that users interact with.
+// Next ID: 14
+message EnvironmentSpec {
+  // Unique ID of the environment in the study.
+  optional string id = 7;
+  // Human readable name of the environment.
+  optional string name = 1;
+  // Additional instructions for the environment. When a study contains several
+  // environments, you can use this field to provide more specific instructions
+  // to the user for this environment.
+  optional string additional_instructions = 2;
+  // Tf true, then the environment transitions to the next state after an action
+  // (e.g. pressing a key). Otherwise, state transitions will happen at a fixed
+  // rate, e.g. 15 steps per second.
+  optional bool sync = 3;
+  // Maximum number of steps in each episode. If not specified, this will depend
+  // on the settings of the environments.
+  optional int32 max_episode_steps = 10;
+
+  // Settings for the Procgen environment. See third_party/py/procgen.
+  message Procgen {
+    // ID of the Procgen environment, e.g. maze.
+    optional string id = 1;
+
+    // Distribution mode; see DISTRUBUTION_MODE_DICT in procgen/env.py.
+    enum DistributionMode {
+      DISTRIBUTION_UNSPECIFIED = 0;
+      DISTRIBUTION_EASY = 1;
+      DISTRIBUTION_HARD = 2;
+      DISTRIBUTION_EXTREME = 3;
+      DISTRIBUTION_MEMORY = 4;
+      // In exploration mode, number of levels and starting level parameters are
+      // ignored.
+      DISTRIBUTION_EXPLORATION = 5;
+    }
+    optional DistributionMode distribution_mode = 2
+        [default = DISTRIBUTION_EASY];
+
+    // Number of unique levels to generate or 0 to use unlimited levels.
+    optional int32 num_levels = 3;
+    // Start level.
+    optional int32 start_level = 4;
+    // Number of levels before resetting the environment.
+    optional int32 level_repeats = 5 [default = 1];
+    // If true, then levels will advance sequentially.
+    optional bool use_sequential_levels = 6;
+    // Seed for random number generation. If not specified, then a random one
+    // will be used.
+    optional int32 rand_seed = 7;
+  }
+
+
+  // Settings for the Atari environment. See third_party/py/atari_py.
+  message Atari {
+    // ID of the Atari environment, e.g. MontezumaRevenge.
+    optional string id = 1;
+    // When sticky actions are enabled, the environment repeats the previous
+    // action with probability 0.25, instead of playing the action given by the
+    // agent.
+    optional bool sticky_actions = 2;
+  }
+
+  // Settings for the DMLab environments. See third_party/labyrinth/.
+  message DMLab {
+    // ID of the DMLab environment, i.e. level, e.g.
+    // explore_goal_locations_small.
+    optional string id = 1;
+  }
+
+
+  // Settings for the NetHack environments. See github.com/facebookresearch/nle.
+  message NetHack {
+    // ID of the NetHack environment, e.g. NetHackScore-v0.
+    optional string id = 1;
+  }
+
+  // Settings for the Robosuite environment. See third_party/py/robosuite.
+  message Robosuite {
+    // ID of the Robosuite environment, e.g. Lift.
+    optional string id = 1;
+    // Robot(s) to use in the environment, e.g. Panda.
+    repeated string robots = 2;
+    // Environment configuration, e.g. single-arm-opposed.
+    optional string config = 3;
+    // Arm to control, e.g. right or left.
+    optional string arm = 4 [default = "right"];
+    // Cameras to use, e.g. agentview or frontview. If empty, then agentview
+    // camera will be used.
+    repeated string cameras = 10;
+    // Controller to use, either IK_POSE or OSC_POSE.
+    optional string controller = 6 [default = "OSC_POSE"];
+    // Position scaling for user inputs.
+    optional float pos_sensitivity = 7 [default = 1.5];
+    // Rotation scaling for user inputs.
+    optional float rot_sensitivity = 8 [default = 1.5];
+    // If true, then observations will include rendered images.
+    optional bool use_camera_obs = 9;
+
+    reserved 5;
+  }
+
+  // Settings for the RoboDesk environment. See
+  // https://github.com/google-research/robodesk.
+  message RoboDesk {
+    // Name of the task, e.g. open_slide. See config.py for the possible
+    // options.
+    optional string task = 1;
+
+    // Type of the reward.
+    enum Reward {
+      REWARD_UNSPECIFIED = 0;
+      REWARD_DENSE = 1;
+      REWARD_SPARSE = 2;
+      REWARD_SUCCESS = 3;
+    }
+    optional Reward reward = 2 [default = REWARD_DENSE];
+    // Number of times to repeat each action.
+    optional int32 action_repeat = 3 [default = 1];
+    // Size of the images in the observations. This would be different from the
+    // image renderings that are displayed to the users when collecting the
+    // trajectories.
+    optional int32 image_size = 4 [default = 64];
+  }
+
+  // Type of the environment and its settings.
+  oneof type {
+    Procgen procgen = 4;
+    Atari atari = 5;
+    DMLab dmlab = 8;
+    NetHack net_hack = 13;
+    Robosuite robosuite = 11;
+    RoboDesk robodesk = 12;
+  }
+}
+
+// Specification of a study.
+// Next ID: 9
+message StudySpec {
+  // Unique ID of the study.
+  optional string id = 1;
+  // Name of the study, e.g. "Atari games".
+  optional string name = 2;
+  // (Short) description of the study.
+  optional string description = 3;
+  // Instructions for the study. This is shown to the users and should describe
+  // the goal of the study and what to do.
+  optional string instructions = 4;
+  // User who created the study.
+  optional User creator = 5;
+  // Creation timestamp.
+  optional google.protobuf.Timestamp creation_time = 8;
+
+  // State of the study.
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    // Study is enabled. Users can interact with the environments in the study
+    // and provide data.
+    STATE_ENABLED = 1;
+    // Study is disabled. Users cannot provide data for the study.
+    STATE_DISABLED = 2;
+  }
+  optional State state = 6;
+
+  // Specifications of the environments in the study.
+  // TODO(sertan): We need to define how the environments will be assigned to
+  // users, e.g. users may select a list or one of the environments can be
+  // chosen randomly.
+  repeated EnvironmentSpec environment_specs = 7;
+
+  // Other settings, e.g. constraints such as total number of episodes, maximum
+  // number of episodes per user etc.
+  // ...
+}
+
+// A list of study specifications.
+message StudySpecs {
+  repeated StudySpec study_specs = 1;
+}
+
+// Denotes a tag with a label.
+message Tag {
+  // Label of the tag.
+  optional string label = 1;
+}
+
+// Metadata about a step of an episode.
+message StepMetadata {
+  // A list of tags for the step.
+  repeated Tag tags = 1;
+}
+
+// A study contains a set of episodes provided by the users, i.e. recorded as
+// they interact with the environments in the study.
+// Next ID: 17
+message Episode {
+  // Unique ID of the episode.
+  optional string id = 1;
+  // Unique ID of the study that the episode is collected for.
+  optional string study_id = 2;
+  // Unique ID of the environment in the study specification.
+  optional string environment_id = 9;
+  // User that provided the episode.
+  optional User user = 3;
+  // Unique ID of the session that the episode is part of. Episodes in a session
+  // will be from the same user. A user may have multiple sessions.
+  optional string session_id = 4;
+
+  // State of the episode.
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    // Episode completed successfully and confirmed by the user.
+    STATE_COMPLETED = 1;
+    // Episode is abandoned by the user, e.g. user stopped responding.
+    STATE_ABANDONED = 2;
+    // Episode is explicitly cancelled by the user before completion.
+    STATE_CANCELLED = 3;
+    // Episode completed successfully, but at the end the user decided to reject
+    // it.
+    STATE_REJECTED = 4;
+  }
+  optional State state = 5;
+
+  // Starting and end timestamps.
+  optional google.protobuf.Timestamp start_time = 6;
+  optional google.protobuf.Timestamp end_time = 7;
+
+  // Metadata about the episode, e.g. parameters of the environment.
+  optional google.protobuf.Struct metadata = 8;
+
+  // Number of steps.
+  optional int32 num_steps = 10;
+  // Total reward over all steps.
+  optional float total_reward = 12;
+
+  // Describes how the episode data was stored.
+  message Storage {
+    // Envlogger. See pypi.org/project/envlogger.
+    message EnvironmentLogger {
+      // Tag directory.
+      optional string tag_directory = 1;
+      // Index of the episode in the logged episodes under this tag directory.
+      optional int32 index = 2;
+    }
+
+    // Pickle files.
+    message Pickle {
+      // Path of the Pickle file that contains the episode data.
+      optional string path = 1;
+    }
+
+    oneof type {
+      EnvironmentLogger environment_logger = 1;
+      Pickle pickle = 2;
+    }
+  }
+  optional Storage storage = 11;
+
+  // A list of tags for the episode.
+  repeated Tag tags = 13;
+  // Notes about the episode.
+  optional string notes = 14;
+  // ID of the input (e.g. gamepad) controller used by the user, excluding the
+  // keyboard (which is always active and can be used together with the
+  // controller). This will be the last controller used for an action in the
+  // episode in the unlikely case of multiple controllers.
+  optional string controller_id = 15;
+
+  // Metadata about the steps of the epsiode keyed by their 0-based index.
+  map<int32, StepMetadata> step_metadata = 16;
+}
+
+// A user session associated with a study.
+message Session {
+  // Unique ID of the session.
+  optional string id = 1;
+  // Unique ID of the study that the session is associated with.
+  optional string study_id = 2;
+  // User of the session.
+  optional User user = 3;
+
+  // State of the session.
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    // Session is valid.
+    STATE_VALID = 1;
+    // Session is invalid and the corresponding episodes will be ignored.
+    STATE_INVALID = 2;
+  }
+  optional State state = 4;
+
+  // Starting and end timestamps.
+  optional google.protobuf.Timestamp start_time = 5;
+  optional google.protobuf.Timestamp end_time = 6;
+}

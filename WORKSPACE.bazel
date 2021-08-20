@@ -1,0 +1,86 @@
+# Copyright 2021 RLDSCreator Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
+
+# Import protobuf dependencies.
+git_repository(
+    name = "com_google_protobuf",
+    remote = "https://github.com/protocolbuffers/protobuf",
+    tag = "v3.17.3",
+)
+
+load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
+
+protobuf_deps()
+
+# Install the requirements.
+http_archive(
+    name = "rules_python",
+    sha256 = "778197e26c5fbeb07ac2a2c5ae405b30f6cb7ad1f5510ea6fdac03bded96cc6f",
+    url = "https://github.com/bazelbuild/rules_python/releases/download/0.2.0/rules_python-0.2.0.tar.gz",
+)
+
+load("@rules_python//python:pip.bzl", "pip_install")
+
+pip_install(
+    name = "py_deps",
+    quiet = False,
+    requirements = "//rlds_creator:requirements.txt",
+)
+
+# Import Bazel protobuf rules.
+http_archive(
+    name = "rules_proto",
+    sha256 = "602e7161d9195e50246177e7c55b2f39950a9cf7366f74ed5f22fd45750cd208",
+    strip_prefix = "rules_proto-97d8af4dc474595af3900dd85cb3a29ad28cc313",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_proto/archive/97d8af4dc474595af3900dd85cb3a29ad28cc313.tar.gz",
+        "https://github.com/bazelbuild/rules_proto/archive/97d8af4dc474595af3900dd85cb3a29ad28cc313.tar.gz",
+    ],
+)
+
+load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
+
+rules_proto_dependencies()
+
+rules_proto_toolchains()
+
+# Import Bazel proto rules. The closure_proto_library rule doesn't handle
+# well known type dependencies (e.g. google/protobuf/struct.proto) properly. In
+# particular, the type specified methods are not added to the generated files.
+# The patch fixes this.
+http_archive(
+    name = "rules_closure",
+    patch_args = ["-p0"],
+    patches = ["closure_proto_library.patch"],
+    sha256 = "9498e57368efb82b985db1ed426a767cbf1ba0398fd7aed632fc3908654e1b1e",
+    strip_prefix = "rules_closure-0.12.0",
+    urls = [
+        "https://github.com/bazelbuild/rules_closure/archive/0.12.0.tar.gz",
+    ],
+)
+
+load("@rules_closure//closure:repositories.bzl", "rules_closure_dependencies", "rules_closure_toolchains")
+
+rules_closure_dependencies()
+
+rules_closure_toolchains()
+
+http_file(
+    name = "com_google_visualization_api",
+    downloaded_file_path = "google_visualization_api-extern.js",
+    urls = ["https://raw.githubusercontent.com/google/closure-compiler/master/contrib/externs/google_visualization_api.js"],
+)

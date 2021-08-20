@@ -1,0 +1,56 @@
+# Copyright 2021 RLDSCreator Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load(
+    "@rules_closure//closure:defs.bzl",
+    "closure_js_library",
+    "closure_proto_library",
+)
+
+package(default_visibility = ["//rlds_creator:__subpackages__"])
+
+closure_proto_library(
+    name = "study_closure_proto",
+    deps = ["//rlds_creator:study_proto"],
+)
+
+closure_proto_library(
+    name = "client_closure_proto",
+    deps = ["//rlds_creator:client_proto"],
+)
+
+closure_js_library(
+    name = "js_lib",
+    srcs = [
+        "app.js",
+        "confirm_dialog.js",
+        "externs.js",
+        "study_editor.js",
+        "utils.js",
+        "web_socket.js",
+        "@com_google_visualization_api//file",
+    ],
+    suppress = [
+        "reportUnknownTypes",
+    ],
+    deps = [
+        ":client_closure_proto",
+        ":study_closure_proto",
+        "@rules_closure//closure/library",
+        "@rules_closure//closure/library/ui:component",
+        "@rules_closure//closure/library/ui:option",
+        "@rules_closure//closure/library/ui:select",
+        "@rules_closure//closure/library/ui:tablesorter",
+    ],
+)

@@ -1,0 +1,17 @@
+absl-py
+atari-py
+db-sqlite3
+dm-acme
+dm_env
+envlogger==1.0.0
+humanize
+matplotlib
+mock
+nle==0.7.3
+opencv-python
+procgen==0.9.3
+protobuf
+robodesk
+robosuite==1.2.1
+sqlalchemy
+tornado

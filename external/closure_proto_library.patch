@@ -1,0 +1,42 @@
+--- closure/protobuf/closure_proto_library.bzl	2021-04-29 10:01:48.000000000 +0200
++++ closure/protobuf/closure_proto_library.bzl	2021-04-29 10:04:11.734993167 +0200
+@@ -23,6 +23,9 @@
+ # https://github.com/bazelbuild/rules_go/blob/67f44035d84a352cffb9465159e199066ecb814c/proto/compiler.bzl#L72
+ def _proto_path(proto):
+     path = proto.path
++    virtual_imports = "/_virtual_imports/"
++    if virtual_imports in path:
++        return path.split(virtual_imports)[1].split("/", 1)[1]
+     root = proto.root.path
+     ws = proto.owner.workspace_root
+     if path.startswith(root):
+@@ -53,14 +56,18 @@
+ def _generate_closure_js(target, ctx):
+     # Support only `import_style=closure`, and always add
+     # |goog.require()| for enums.
++    srcs = [_proto_path(file) for file in target[ProtoInfo].direct_sources]
+     js_out_options = [
+         "import_style=closure",
+-        "library=%s" % ctx.label.name,
+         "add_require_for_enums",
+     ]
+     if getattr(ctx.rule.attr, "testonly", False):
+         js_out_options.append("testonly")
+-    js = ctx.actions.declare_file("%s.js" % ctx.label.name)
++    if len(srcs) > 0 and not srcs[0].startswith('google/protobuf'):
++        js_out_options.append("library=%s" % ctx.label.name)
++        js = ctx.actions.declare_file("%s.js" % ctx.label.name)
++    else:
++        js = ctx.actions.declare_file(srcs[0].split("/")[-1].replace('.proto', '.js'))
+ 
+     # Add include paths for all proto files,
+     # to avoid copying/linking the files for every target.
+@@ -72,7 +79,7 @@
+     args += ["--js_out=%s:%s" % (out_options, out_path)]
+ 
+     # Add paths of protos we generate files for.
+-    args += [file.path for file in target[ProtoInfo].direct_sources]
++    args += srcs
+ 
+     ctx.actions.run(
+         inputs = protos,

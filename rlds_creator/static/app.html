@@ -1,0 +1,666 @@
+<!--
+   Copyright 2021 RLDSCreator Authors.
+  
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+  
+       http://www.apache.org/licenses/LICENSE-2.0
+  
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+-->
+
+<!DOCTYPE HTML>
+<html>
+
+<head>
+  <title>RLDS Creator</title>
+  <script>
+    // Manage dependencies with AJD (go/js-practices/build-rules).
+    window.CLOSURE_NO_DEPS = true;
+  </script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet"
+    href="https://www.gstatic.com/external_hosted/material_design_lite/mdl_css-indigo-pink-bundle.css">
+  <link rel="stylesheet" href="app_css.css">
+  <script defer
+    src="https://www.gstatic.com/external_hosted/material_design_lite/mdl_all_js_compiled.js">
+  </script>
+  <script src="https://www.gstatic.com/charts/loader.js"></script>
+  <script>
+    // Load the Visualization API and the corechart package.
+    google.charts.load('current', {
+      'packages': ['corechart']
+    });
+
+    function runApp() {
+      google.charts.setOnLoadCallback(function() {
+        new rlds_creator.App();
+      });
+    }
+  </script>
+  <script defer src="app_compiled.js"></script>
+</head>
+
+<body onload="runApp();">
+  <div id="snackbar" class="mdl-js-snackbar mdl-snackbar">
+    <div class="mdl-snackbar__text"></div>
+    <button class="mdl-snackbar__action" type="button"></button>
+  </div>
+  <div id="busy-overlay">
+    <div class="mdl-progress mdl-js-progress mdl-progress__indeterminate"></div>
+    <div class="bubble">
+      <span class="mdl-chip mdl-chip--contact">
+        <span class="mdl-chip__contact mdl-color--red mdl-color-text--white">I</span>
+        <span class="mdl-chip__text">
+          Some operations, e.g. creating an environment, may take some time. Please stand by...
+        </span>
+      </span>
+    </div>
+  </div>
+  <dialog id="save-dialog" class="mdl-dialog">
+    <h4 class="mdl-dialog__title">Save?</h4>
+    <div class="mdl-dialog__content">
+      <p>The episode has ended or cancelled. Do you want to save it?</p>
+      <p>
+        <label class="mdl-checkbox mdl-js-checkbox" for="save-mark-as-completed">
+          <input type="checkbox" id="save-mark-as-completed" class="mdl-checkbox__input">
+          <span class="mdl-checkbox__label">Mark as completed.</span>
+        </label>
+      </p>
+    </div>
+    <div class="mdl-dialog__actions">
+      <button id="save-accept" type="button" class="mdl-button">Yes</button>
+      <button id="save-reject" type="button" class="mdl-button">No</button>
+    </div>
+  </dialog>
+  <dialog id="download-dialog" class="mdl-dialog">
+    <h4 class="mdl-dialog__title">Download episodes</h4>
+    <div class="mdl-dialog__content">
+      <div id="download-progress" class="mdl-progress mdl-js-progress"></div>
+      <div id="download-link-container">
+        <p>You can download the selected episodes from the following URL:</p>
+        <p id="download-link"></p>
+      </div>
+    </div>
+    <div id="download-actions" class="mdl-dialog__actions">
+      <button id="download-close" type="button" class="mdl-button">Close</button>
+      <button id="download-copy-to-clipboard" type="button" class="mdl-button">
+        Copy to clipboard
+      </button>
+    </div>
+  </dialog>
+  <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+    <header class="mdl-layout__header">
+      <div class="mdl-layout__header-row">
+        <i class="material-icons" style="font-size: 36px; padding-right: 5px;">videogame_asset</i>
+        <span class="mdl-layout-title">RLDS Creator</span>
+        <div class="mdl-layout-spacer"></div>
+        <nav class="mdl-navigation mdl-layout--large-screen-only">
+          <label id="study-label" for="study">Study:&nbsp;</label>
+          <label id="environment-label" for="environment">&nbsp;Environment:&nbsp;</label>
+        </nav>
+      </div>
+      <div class="mdl-layout__tab-bar mdl-js-ripple-effect">
+        <a href="#player-panel" id="player-tab" class="mdl-layout__tab is-active">Player</a>
+        <a href="#episodes-panel" id="episodes-tab" class="mdl-layout__tab">Episodes</a>
+        <a href="#replay-panel" id="replay-tab" class="mdl-layout__tab">Replay</a>
+        <a href="#studies-panel" id="studies-tab" class="mdl-layout__tab">Studies</a>
+        <a href="#edit-study-panel" id="edit-study-tab" class="mdl-layout__tab">Add / Edit Study</a>
+      </div>
+    </header>
+    <main class="main mdl-layout__content">
+      <section class="mdl-layout__tab-panel is-active" id="player-panel">
+        <div class="panel-content">
+          <div id="env-intro">
+            <span class="mdl-chip mdl-chip--contact">
+              <span class="mdl-chip__contact mdl-color--red mdl-color-text--white">I</span>
+              <span class="mdl-chip__text">Please select a study and an environment to start.</span>
+            </span>
+          </div>
+          <div id="env-container" class="mdl-grid">
+            <div class="mdl-cell mdl-cell--2-col"></div>
+            <div class="mdl-cell mdl-cell--5-col">
+              <div id="env-canvas" class="canvas-container">
+                <canvas id="canvas" width="640" height="640" tabindex="0"></canvas>
+                <div id="paused" class="bubble canvas-bubble">
+                  <span class="mdl-chip mdl-chip--contact">
+                    <span class="mdl-chip__contact mdl-color--red mdl-color-text--white">!</span>
+                    <span class="mdl-chip__text">Environment is paused. Press <b>/</b> (slash) to
+                      continue.</span>
+                  </span>
+                </div>
+                <div id="env-camera" class="bubble">
+                  <span class="mdl-chip">
+                    <span id="env-camera-name" class="mdl-chip__text"></span>
+                    <span class="mdl-chip__action" style="cursor: auto;">
+                      <i class="material-icons">camera_alt</i>
+                    </span>
+                  </span>
+                </div>
+              </div>
+              <div class="items-container">
+                <div class="item">
+                  <button id="env-fullscreen"
+                    class="mdl-button mdl-js-button mdl-button--fab mdl-button--mini-fab">
+                    <i class="material-icons">fullscreen</i>
+                  </button>
+                  <div class="mdl-tooltip" data-mdl-for="env-fullscreen">
+                    Fullscreen
+                  </div>
+                </div>
+                <div class="item" style="width: 300px;">
+                  <input id="fps-slider" class="mdl-slider mdl-js-slider" type="range" min="1"
+                    max="30" value="15">
+                </div>
+                <div><span id="fps">15</span>&nbsp;frames/sec</div>
+                <div class="item">
+                  <label id="quality-label" for="quality">Quality:&nbsp;</label>
+                </div>
+              </div>
+              <div id="stats">
+                Episode <span id="episode-index">-</span> /
+                Step <span id="episode-step">-</span> /
+                Reward <span id="reward">0</span>
+              </div>
+              <div>
+                <span class="mdl-chip mdl-chip--contact">
+                  <span class="mdl-chip__contact mdl-color--red mdl-color-text--white">I</span>
+                  <span class="mdl-chip__text">You can press <b>ENTER</b> to reset the current
+                    episode before it ends and start a new one.</span>
+                </span>
+              </div>
+            </div>
+            <div class="mdl-cell mdl-cell--3-col">
+              <h6>Description</h6>
+              <div id="study-description"></div>
+              <h6>Instructions</h6>
+              <div id="study-instructions"></div>
+              <h6>Specific instructions</h6>
+              <div id="env-instructions"></div>
+            </div>
+            <div class="mdl-cell mdl-cell--2-col"></div>
+          </div>
+        </div>
+      </section>
+      <section class="mdl-layout__tab-panel" id="episodes-panel">
+        <div class="panel-content">
+          <p>The episodes of the current study are listed here, including the rejected and abandoned
+            ones. The videos of the episodes are subject to post-processing and may be available
+            with a delay.</p>
+          <div id="episodes-loading" class="bubble">
+            <span class="mdl-chip mdl-chip--contact">
+              <span class="mdl-chip__contact mdl-color--red mdl-color-text--white">I</span>
+              <span class="mdl-chip__text">
+                Loading the episodes of the study...
+              </span>
+            </span>
+          </div>
+          <div id="episodes-container">
+            <table id="episodes-tbl"
+              class="mdl-data-table mdl-js-data-table mdl-data-table--selectable mdl-shadow--2dp">
+              <thead>
+                <tr>
+                  <th class="mdl-data-table__cell--non-numeric">Date</th>
+                  <th class="mdl-data-table__cell--non-numeric">Environment</th>
+                  <th class="mdl-data-table__cell--non-numeric">Session</th>
+                  <th class="mdl-data-table__cell--non-numeric">Episode</th>
+                  <th class="mdl-data-table__cell--non-numeric">
+                    Status
+                    <label class="mdl-icon-toggle mdl-js-icon-toggle mdl-js-ripple-effect"
+                      for="status-valid">
+                      <input type="checkbox" id="status-valid" class="mdl-icon-toggle__input"
+                        checked>
+                      <i class="mdl-icon-toggle__label material-icons">check_circle</i>
+                    </label>
+                  </th>
+                  <th class="mdl-data-table__cell--non-numeric">Tags</th>
+                  <th>Steps</th>
+                  <th>Total reward</th>
+                  <th class="mdl-data-table__cell--non-numeric">Duration</th>
+                  <th class="mdl-data-table__cell--non-numeric">Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+            <div class="items-container">
+              <div class="item">
+                <button id="download"
+                  class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored">
+                  Download
+                </button>
+              </div>
+              <div class="item">
+                <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect"
+                  for="download-archive">
+                  <input type="checkbox" id="download-archive" class="mdl-checkbox__input">
+                  <span class="mdl-checkbox__label">As a single archive</span>
+                </label>
+              </div>
+              <div class="item">
+                <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect"
+                  for="download-keep-internal-metadata">
+                  <input type="checkbox" id="download-keep-internal-metadata" class="mdl-checkbox__input">
+                  <span class="mdl-checkbox__label">Keep images, user actions and other internal
+                    metadata.</span>
+                </label>
+              </div>
+              <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label item">
+                <input class="mdl-textfield__input" type="text" id="end_of_episode_tags">
+                <label class="mdl-textfield__label" for="end_of_episode_tags">Comma-separated end of
+                  episode tags</label>
+              </div>
+            </div>
+            <div id="download-link"></div>
+          </div>
+        </div>
+      </section>
+      <section class="mdl-layout__tab-panel" id="replay-panel">
+        <div class="panel-content">
+          <div id="replay-intro">
+            <span class="mdl-chip mdl-chip--contact">
+              <span class="mdl-chip__contact mdl-color--red mdl-color-text--white">I</span>
+              <span class="mdl-chip__text">Please select a recorded episode to replay.</span>
+            </span>
+          </div>
+          <div id="replay-container">
+            <div class="mdl-grid">
+              <div class="mdl-cell mdl-cell--2-col"></div>
+              <div class="mdl-cell mdl-cell--8-col">
+                <h5>
+                  <span id="replay-study-name"></span> /
+                  <span id="replay-env-name"></span> /
+                  <span id="replay-start-time"></span> /
+                  <span id="replay-id"></span>
+                </h5>
+                <div>
+                  <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label"
+                    style="width: 150px;">
+                    <input class="mdl-textfield__input" type="text" id="replay-add-episode-tag">
+                    <label class="mdl-textfield__label" for="replay-add-episode-tag">
+                      Tag the episode...
+                    </label>
+                  </div>
+                  <span id="replay-episode-tags"></span>
+                </div>
+              </div>
+              <div class="mdl-cell mdl-cell--2-col"></div>
+            </div>
+            <div class="mdl-grid">
+              <div class="mdl-cell mdl-cell--2-col"></div>
+              <div class="mdl-cell mdl-cell--5-col">
+                <div class="canvas-container">
+                  <canvas id="replay-canvas" width="640" height="640" tabindex="0"></canvas>
+                  <div class="bubble canvas-bubble">
+                    <span class="mdl-chip mdl-chip--contact">
+                      <span id="replay-step"
+                        class="mdl-chip__contact mdl-color--red mdl-color-text--white"></span>
+                      <span class="mdl-chip__text"> of <span id="replay-num-steps">-</span></span>
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <input id="replay-step-slider" class="mdl-slider mdl-js-slider" type="range"
+                    min="0">
+                </div>
+                <div>
+                  <span class="mdl-chip mdl-chip--contact">
+                    <span class="mdl-chip__contact mdl-color--red mdl-color-text--white">I</span>
+                    <span class="mdl-chip__text">
+                      Click on the canvas and use (shift + ) left / right arrow keys to
+                      move to the previous / next (10) step(s).
+                    </span>
+                  </span>
+                </div>
+                <div>
+                  <h6>Observation</h6>
+                  <div>
+                    <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect"
+                      for="replay-simplified">
+                      <input type="checkbox" id="replay-simplified" class="mdl-checkbox__input"
+                        checked>
+                      <span class="mdl-checkbox__label">Display simplified numeric values.</span>
+                    </label>
+                  </div>
+                  <div id="replay-observation"></div>
+                  <h6>Action</h6>
+                  <div id="replay-action"></div>
+                  <h6>Notes</h6>
+                  <div class="mdl-textfield mdl-js-textfield">
+                    <textarea class="mdl-textfield__input" type="text" rows="3"
+                      id="replay-episode-notes"></textarea>
+                    <label class="mdl-textfield__label" for="replay-episode-notes">
+                      Notes for the episode...
+                    </label>
+                  </div>
+                  <div>
+                    <button id="replay-episode-save"
+                      class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored">
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="mdl-cell mdl-cell--4-col">
+                <h6>Reward</h6>
+                <div>
+                  <span id="replay-reward"></span> of <span id="replay-total-reward"></span>
+                </div>
+                <div id="replay-reward-chart"></div>
+                <p><i>Red line shows the cumulative reward.</i></p>
+                <h6>User action(s)</h6>
+                <div id="replay-keys"></div>
+                <div>
+                  <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label"
+                    style="width: 150px;">
+                    <input class="mdl-textfield__input" type="text" id="replay-add-step-tag">
+                    <label class="mdl-textfield__label" for="replay-add-step-tag">
+                      Tag the step...
+                    </label>
+                  </div>
+                  <span id="replay-step-tags"></span>
+                </div>
+              </div>
+              <div class="mdl-cell mdl-cell--1-col"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="mdl-layout__tab-panel" id="studies-panel">
+        <div class="panel-content">
+          <p>
+            <button class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored"
+              id="new-study">
+              Create new study
+            </button>
+          </p>
+          <div id="studies-intro">
+            <span class="mdl-chip mdl-chip--contact">
+              <span class="mdl-chip__contact mdl-color--red mdl-color-text--white">I</span>
+              <span class="mdl-chip__text">You don't have any studies. Please create one.</span>
+            </span>
+          </div>
+          <div id="studies-container">
+            <p>
+              <span class="mdl-chip mdl-chip--contact">
+                <span class="mdl-chip__contact mdl-color--red mdl-color-text--white">I</span>
+                <span class="mdl-chip__text">Only enabled studies will be accessible by other
+                  people.</span>
+              </span>
+            </p>
+            <table id="studies-tbl" class="mdl-data-table mdl-js-data-table mdl-shadow--2dp">
+              <thead>
+                <tr>
+                  <th class="mdl-data-table__cell--non-numeric">Name</th>
+                  <th class="mdl-data-table__cell--non-numeric">Date</th>
+                  <th class="mdl-data-table__cell--non-numeric">Enabled</th>
+                  <th class="mdl-data-table__cell--non-numeric">Description</th>
+                  <th class="mdl-data-table__cell--non-numeric">Environments</th>
+                  <th class="mdl-data-table__cell--non-numeric"></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      <section class="mdl-layout__tab-panel" id="edit-study-panel">
+        <div class="panel-content">
+          <form action="#">
+            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+              <input class="mdl-textfield__input" type="text" id="edit-study-name">
+              <label class="mdl-textfield__label" for="edit-study-name">Name of the study</label>
+            </div>
+            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label largewidth">
+              <textarea class="mdl-textfield__input" type="text" rows="2"
+                id="edit-study-description"></textarea>
+              <label class="mdl-textfield__label" for="edit-study-description">Description<label>
+            </div>
+            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label largewidth">
+              <textarea class="mdl-textfield__input" type="text" rows="5"
+                id="edit-study-instructions"></textarea>
+              <label class="mdl-textfield__label" for="edit-study-instructions">Instructions<label>
+            </div>
+            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+              <input class="mdl-textfield__input" type="text" id="edit-study-env-id">
+              <label class="mdl-textfield__label" for="edit-study-env-id">Unique ID of the
+                environment</label>
+            </div>
+            <div>
+              <span class="mdl-chip mdl-chip--contact">
+                <span class="mdl-chip__contact mdl-color--red mdl-color-text--white">!</span>
+                <span class="mdl-chip__text">
+                  Previously recorded episodes will not be accessible if you change the environment
+                  ID.
+                </span>
+              </span>
+            </div>
+            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+              <input class="mdl-textfield__input" type="text" id="edit-study-env-name">
+              <label class="mdl-textfield__label" for="edit-study-env-name">Name of the
+                environment</label>
+            </div>
+            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label largewidth">
+              <textarea class="mdl-textfield__input" type="text" rows="5"
+                id="edit-study-additional-instructions"></textarea>
+              <label class="mdl-textfield__label"
+                for="edit-study-additional-instructions">Additional instructions for the
+                environment<label>
+            </div>
+            <div>
+              <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect"
+                for="edit-study-sync">
+                <input type="checkbox" id="edit-study-sync" class="mdl-checkbox__input" checked>
+                <span class="mdl-checkbox__label">Synchronize steps with user actions.</span>
+              </label>
+            </div>
+            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+              <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
+                id="edit-study-max-episode-steps">
+              <label class="mdl-textfield__label" for="edit-study-max-episode-steps">Maximum number
+                of episode steps</label>
+              <span class="mdl-textfield__error">Input is not a number!</span>
+            </div>
+            <h5>Environment</h5>
+            <div>
+              <label for="edit-study-procgen" class="mdl-radio mdl-js-radio">
+                <input type="radio" id="edit-study-procgen" name="edit-study-env" value="procgen"
+                  class="mdl-radio__button">
+                <span class="mdl-radio__label">Procgen</span>
+              </label>
+            </div>
+            <div id="edit-study-procgen-container">
+              <div>
+                <label id="edit-study-procgen-ids"
+                  for="edit-study-procgen-id">Game:&nbsp;</label>&nbsp;
+                <label id="edit-study-procgen-distribution-modes"
+                  for="edit-study-procgen-distribution-mode">Mode:&nbsp;</label>
+                <p><i>In exploration mode, number of levels and starting level parameters are
+                    ignored.</i></p>
+              </div>
+              <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
+                  id="edit-study-procgen-num-levels">
+                <label class="mdl-textfield__label" for="edit-study-procgen-num-levels">Number of
+                  levels or 0 for unlimited</label>
+                <span class="mdl-textfield__error">Input is not a number!</span>
+              </div>
+              <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
+                  id="edit-study-procgen-start-level">
+                <label class="mdl-textfield__label" for="edit-study-procgen-start-level">Start
+                  level</label>
+                <span class="mdl-textfield__error">Input is not a number!</span>
+              </div>
+              <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
+                  id="edit-study-procgen-level-repeats">
+                <label class="mdl-textfield__label" for="edit-study-procgen-level-repeats">Number of
+                  levels to repeat</label>
+                <span class="mdl-textfield__error">Input is not a number!</span>
+              </div>
+              <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect"
+                for="edit-study-procgen-use-sequential-levels">
+                <input type="checkbox" id="edit-study-procgen-use-sequential-levels"
+                  class="mdl-checkbox__input">
+                <span class="mdl-checkbox__label">Use sequential levels.</span>
+              </label>
+            </div>
+            <hr />
+            <div>
+              <label for="edit-study-atari" class="mdl-radio mdl-js-radio">
+                <input type="radio" id="edit-study-atari" name="edit-study-env" value="atari"
+                  class="mdl-radio__button">
+                <span class="mdl-radio__label">Atari</span>
+              </label>
+            </div>
+            <div id="edit-study-atari-container">
+              <div>
+                <label id="edit-study-atari-ids" for="edit-study-atari-id">Game:&nbsp;</label>&nbsp;
+              </div>
+              <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect"
+                for="edit-study-atari-sticky-actions">
+                <input type="checkbox" id="edit-study-atari-sticky-actions"
+                  class="mdl-checkbox__input">
+                <span class="mdl-checkbox__label">Use sticky actions.<span>
+              </label>
+            </div>
+            <hr />
+            <div>
+              <label for="edit-study-dmlab" class="mdl-radio mdl-js-radio">
+                <input type="radio" id="edit-study-dmlab" name="edit-study-env" value="dmlab"
+                  class="mdl-radio__button">
+                <span class="mdl-radio__label">DMLab</span>
+              </label>
+            </div>
+            <div id="edit-study-dmlab-container">
+              <div>
+                <label id="edit-study-dmlab-ids" for="edit-study-dmlab-id">Task:&nbsp;</label>&nbsp;
+              </div>
+            </div>
+            <hr />
+            <div>
+              <label for="edit-study-net-hack" class="mdl-radio mdl-js-radio">
+                <input type="radio" id="edit-study-net-hack" name="edit-study-env" value="net-hack"
+                  class="mdl-radio__button">
+                <span class="mdl-radio__label">NetHack</span>
+              </label>
+            </div>
+            <div id="edit-study-net-hack-container">
+              <div>
+                <label id="edit-study-net-hack-ids" for="edit-study-net-hack-id">Task:&nbsp;</label>&nbsp;
+              </div>
+            </div>
+            <hr />
+            <div>
+              <label for="edit-study-robodesk" class="mdl-radio mdl-js-radio">
+                <input type="radio" id="edit-study-robodesk" name="edit-study-env"
+                  value="robodesk" class="mdl-radio__button">
+                <span class="mdl-radio__label">RoboDesk</span>
+              </label>
+            </div>
+            <div id="edit-study-robodesk-container">
+              <div>
+                <label id="edit-study-robodesk-tasks"
+                  for="edit-study-robodesk-task">Task:&nbsp;</label>&nbsp;
+                <label id="edit-study-robodesk-rewards"
+                  for="edit-study-robodesk-reward">Reward:&nbsp;</label>
+              </div>
+              <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                <input class="mdl-textfield__input" type="text"
+                  id="edit-study-robodesk-action-repeat" value="1">
+                <label class="mdl-textfield__label"
+                  for="edit-study-robodesk-action-repeat">Action repeat</label>
+              </div>
+              <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                <input class="mdl-textfield__input" type="text"
+                  id="edit-study-robodesk-image-size" value="64">
+                <label class="mdl-textfield__label"
+                  for="edit-study-robodesk-image-size">Image size</label>
+              </div>
+            </div>
+            <hr />
+            <div>
+              <label for="edit-study-robosuite" class="mdl-radio mdl-js-radio">
+                <input type="radio" id="edit-study-robosuite" name="edit-study-env"
+                  value="robosuite" class="mdl-radio__button">
+                <span class="mdl-radio__label">Robosuite</span>
+              </label>
+            </div>
+            <div id="edit-study-robosuite-container">
+              <div>
+                <label id="edit-study-robosuite-ids"
+                  for="edit-study-robosuite-id">Task:&nbsp;</label>&nbsp;
+              </div>
+              <div>
+                <label id="edit-study-robosuite-robots"
+                  for="edit-study-robosuite-robot">Robot:&nbsp;</label>&nbsp;
+              </div>
+              <div>
+                <label id="edit-study-robosuite-configs"
+                  for="edit-study-robosuite-config">Config:&nbsp;</label>&nbsp;
+              </div>
+              <div>
+                <label id="edit-study-robosuite-arms" for="edit-study-robosuite-arm">Arm to
+                  control:&nbsp;</label>&nbsp;
+              </div>
+              <div>
+                <label id="edit-study-robosuite-controllers"
+                  for="edit-study-robosuite-controller">Controller:&nbsp;</label>&nbsp;
+              </div>
+              <div>
+                Cameras:
+                <div id="edit-study-robosuite-cameras"></div>
+                <p><i>Some cameras may not be available in all environments.</i></p>
+              </div>
+              <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                <input class="mdl-textfield__input" type="text"
+                  id="edit-study-robosuite-pos-sensitivity" value="1.5">
+                <label class="mdl-textfield__label"
+                  for="edit-study-robosuite-pos-sensitivity">Position scaling for user
+                  inputs</label>
+              </div>
+              <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                <input class="mdl-textfield__input" type="text"
+                  id="edit-study-robosuite-rot-sensitivity" value="1.5">
+                <label class="mdl-textfield__label"
+                  for="edit-study-robosuite-rot-sensitivity">Rotation scaling for user
+                  inputs</label>
+              </div>
+              <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect"
+                for="edit-study-robosuite-use-camera-obs">
+                <input type="checkbox" id="edit-study-robosuite-use-camera-obs"
+                  class="mdl-checkbox__input">
+                <span class="mdl-checkbox__label">Use camera observations.</span>
+              </label>
+              <p><i>Simulation may be slower with multiple cameras when camera observations are
+                  enabled.</i></p>
+            </div>
+            <hr />
+          </form>
+          <p>
+            <span class="mdl-chip mdl-chip--contact">
+              <span class="mdl-chip__contact mdl-color--red mdl-color-text--white">!</span>
+              <span class="mdl-chip__text">
+                To check that the settings are valid, the environment will be created when you add
+                or edit it. This operation may take some time.
+              </span>
+            </span>
+          </p>
+          <p>
+            <button id="edit-study-cancel" type="button"
+              class="mdl-button mdl-js-button mdl-button--raised">Cancel</button>&nbsp;
+            <button id="edit-study-save" type="button"
+              class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored">Save</button>
+          </p>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+
+</html>

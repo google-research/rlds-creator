@@ -1,0 +1,462 @@
+// Copyright 2021 RLDSCreator Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Protocol buffer messages used in the bi-directional communication between the
+// RLDS Creator server and the client.
+syntax = "proto2";
+
+package rlds_creator.client;
+
+import "rlds_creator/study.proto";
+
+// Reference to uniquely identify an episode in a study and session.
+message EpisodeRef {
+  // ID of the study.
+  optional string study_id = 1;
+  // ID of the session.
+  optional string session_id = 2;
+  // ID of the episode.
+  optional string episode_id = 3;
+}
+
+// Metadata about an episode.
+// Next ID: 8
+message EpisodeMetadata {
+  // Specification of the study that the episode is part of.
+  optional StudySpec study = 1;
+  // Specification of the environment in the study that is used to generate the
+  // episode.
+  optional EnvironmentSpec env = 2;
+  // Episode.
+  optional rlds_creator.Episode episode = 3;
+  // Duration of the episode in human readable form, e.g. 30s.
+  optional string duration = 4;
+  // URL for the video recording.
+  optional string video_url = 5;
+  // Status of the episode in human reaable form, e.g. Completed.
+  optional string status = 6;
+  // Whether the user can delete the episode or not.
+  optional bool can_delete = 7;
+}
+
+message ConfigResponse {
+  // RLDS Creator configuration in JSON format. See config.py.
+  optional string config = 1;
+}
+
+// Denotes the input from a gamepad controller. See
+// https://www.w3.org/TR/gamepad/#gamepad-interface for more information.
+message GamepadInput {
+  // Identifies the brand and the style of the gamepad controller, e.g. Google
+  // LLC Stadia Controller rev. A (STANDARD GAMEPAD Vendor: 18d1 Product: 9400)
+  optional string id = 3;
+
+  message Button {
+    // The pressed state of the button.
+    optional bool pressed = 1;
+    // For buttons that have an analog sensor, the amount which the button has
+    // been pressed in the range [0, 1]. 0 means full unpressed and 1.0 means
+    // fully pressed.
+    optional double value = 2;
+  }
+
+  // Buttons keyed by their indices.
+  map<int32, Button> buttons = 1;
+
+  // Values for the non-zeroaxes of the gamepad normalized in the range [-1.0,
+  // 1.0]. If the controller is perpendicular to the ground with the directional
+  // stick pointing up, -1.0 corresponds to "forward" or "left", and 1.0
+  // corresponds to "backward" or "right".
+  map<int32, float> axes = 2;
+}
+
+// Request for sending the user actions.
+message ActionRequest {
+  // List of pressed keys.
+  repeated string keys = 1;
+
+  // Input from a gamepad controller.
+  optional GamepadInput gamepad_input = 2;
+}
+
+message ActionResponse {}
+
+// Request for adding a tag to the current episode being replayed.
+message AddEpisodeTagRequest {
+  // Label of the tag to add.
+  optional string tag = 1;
+}
+
+message AddEpisodeTagResponse {
+  // Label of the tag specified in the corresponding request.
+  optional string tag = 1;
+  // True if the tag is added successfully.
+  optional bool success = 2;
+}
+
+// Request for adding a tag to a step of the current episode being replayed.
+message AddStepTagRequest {
+  // 0-based index of the step.
+  optional int32 index = 1;
+  // Label of the tag to add.
+  optional string tag = 2;
+}
+
+message AddStepTagResponse {
+  // 0-based index of the step.
+  optional int32 index = 1;
+  // Label of the tag specified in the corresponding request.
+  optional string tag = 2;
+  // True if the tag is added successfully.
+  optional bool success = 3;
+}
+
+// Asks user for confirmation to save the terminated episode.
+message ConfirmSaveResponse {
+  // Whether to mark the episode as completed or not. This will set the default
+  // value of the corresponding check box in the confirmation dialog.
+  optional bool mark_as_completed = 1;
+}
+
+// Request for deleting an episode.
+message DeleteEpisodeRequest {
+  // Unique reference of the episode to delete.
+  optional EpisodeRef ref = 1;
+}
+
+message DeleteEpisodeResponse {
+  // Unique reference of the episode.
+  optional EpisodeRef ref = 1;
+  // Whether the episode is deleted or not.
+  optional bool success = 2;
+}
+
+// Request for downloading a list of episodes. The episodes will be merged and
+// stored in DM Environment Logger format.
+message DownloadEpisodesRequest {
+  // Unique references of the episodes.
+  repeated EpisodeRef refs = 1;
+  // If true, then the dataset, i.e. environment logger Riegeli files, will be
+  // stored as a single ZIP file. Otherwise, they will be stored under a
+  // directory.
+  optional bool archive = 2;
+  // If true, then internal episode and step metadata, e.g. tags and notes for
+  // the episode and images and pressed keys for steps will be stripped. This
+  // will generate a more compact and Tensorflow friendly output (in particular,
+  // the number of pressed keys may change in each step and consequently the
+  // length of the tensor will not be fixed).
+  optional bool strip_internal_metadata = 3;
+  // List of step tags that denote the end of an episode.
+  repeated string end_of_episode_tags = 4;
+}
+
+message DownloadEpisodesResponse {
+  // URL to download the (merged) episodes. This will be set when the progress
+  // is 100%.
+  optional string url = 1;
+  // Percentage of progress (0-100).
+  optional float progress = 2;
+}
+
+// Request to enable / disable a study.
+message EnableStudyRequest {
+  // ID of the study.
+  optional string study_id = 1;
+  // Whether to enable or disable the study.
+  optional bool enable = 2;
+}
+
+message EnableStudyResponse {
+  // ID of the study specified in the corresponding request.
+  optional string study_id = 1;
+  // Whether the study is in enabled or disabled state.
+  optional bool enabled = 2;
+}
+
+// A list of episodes. This is usually the existing episodes recorded by the
+// user for the current study.
+message EpisodesResponse {
+  repeated EpisodeMetadata episodes = 1;
+}
+
+// Used to indicate an error to the client.
+message ErrorResponse {
+  // Error message.
+  optional string mesg = 1;
+}
+
+// Request to replay a particular step of an episode.
+message ReplayStepRequest {
+  // 0-based index of the step to replay.
+  optional int32 index = 1;
+}
+
+// An observation or action data.
+message Data {
+  message Image {
+    // Name of the image, e.g. that of the observation. It may be empty.
+    optional string name = 1;
+    // An image in JPEG or PNG format.
+    optional bytes image = 2;
+  }
+
+  oneof type {
+    // Arbitrary data in JSON format. This is usually a scalar or a Numpy array.
+    string json_encoded = 2;
+  }
+
+  // List of images.
+  repeated Image images = 3;
+
+  reserved 1;
+}
+
+message ReplayStepResponse {
+  // 0-based index of the step being replayed.
+  optional int32 index = 1;
+  // Visual rendering of the step.
+  optional bytes image = 2;
+  // Keys pressed by the user.
+  repeated string keys = 3;
+  // Environment reward, observation and action.
+  optional float reward = 4;
+  optional Data observation = 5;
+  optional Data action = 6;
+  // Tags of the step.
+  repeated string tags = 7;
+}
+
+// Used to indicate whether the episode being recorded is paused or not.
+message PauseResponse {
+  optional bool paused = 1;
+}
+
+// Request for removing a tag from the current episode being replayed.
+message RemoveEpisodeTagRequest {
+  // Label of the tag to remove.
+  optional string tag = 1;
+}
+
+message RemoveEpisodeTagResponse {
+  // Label of the tag specified in the corresponding request.
+  optional string tag = 1;
+  // True if the tag is removed successfully.
+  optional bool success = 2;
+}
+
+// Request for removing a tag from a step of the current episode being replayed.
+message RemoveStepTagRequest {
+  // 0-based index of the step.
+  optional int32 index = 1;
+  // Label of the tag to remove.
+  optional string tag = 2;
+}
+
+message RemoveStepTagResponse {
+  // 0-based index of the step.
+  optional int32 index = 1;
+  // Label of the tag specified in the corresponding request.
+  optional string tag = 2;
+  // True if the tag is removed successfully.
+  optional bool success = 3;
+}
+
+// Request to replay an episode.
+message ReplayEpisodeRequest {
+  // Unique reference of the episode to replay.
+  optional EpisodeRef ref = 1;
+}
+
+message ReplayEpisodeResponse {
+  // Metadata of the episode that starts to be replayed.
+  optional EpisodeMetadata episode = 1;
+  // Rewards at each step of the episode. None values will be replaced by 0.
+  repeated float step_rewards = 2;
+}
+
+// Request to accept or reject to save the terminated episode.
+message SaveEpisodeRequest {
+  // Whether to accept or reject.
+  optional bool accept = 1;
+  // Whether to mark the episode as completed or not. If false, then the episode
+  // will be in cancelled state.
+  optional bool mark_as_completed = 2;
+}
+
+// Metadata of the saved episode.
+message SaveEpisodeResponse {
+  optional EpisodeMetadata episode = 1;
+}
+
+// Request to save a study.
+message SaveStudyRequest {
+  // Specification of the study to save. If the study_id field is set, then the
+  // existing study with the specified ID will be updated. Otherwise, a new
+  // study will be created. When updating an existing study, the readonly fields
+  // (e.g. its creator, creation time and state) will be ignored if set in the
+  // request.
+  optional StudySpec study = 1;
+}
+
+message SaveStudyResponse {}
+
+// Request to select an environment from the current study.
+message SelectEnvironmentRequest {
+  // ID of the environment in the study.
+  optional string env_id = 1;
+}
+
+message SelectEnvironmentResponse {
+  // ID of the current study.
+  optional string study_id = 1;
+  // Specification of the selected environment.
+  optional EnvironmentSpec env = 2;
+}
+
+// Request to select a study.
+message SelectStudyRequest {
+  // ID of the study.
+  optional string study_id = 1;
+}
+
+message SelectStudyResponse {
+  // Specification of the selected study.
+  optional StudySpec study = 1;
+}
+
+// Request to set the camera.
+message SetCameraRequest {
+  // 0-based index of the camera to use for rendering images.
+  optional int32 index = 1;
+}
+
+message SetCameraResponse {
+  // 0-based index of the current camera.
+  optional int32 index = 1;
+  // Name of the camera; this may be empty.
+  optional string name = 2;
+}
+
+// Request to change the speed (frames/sec) of the current environment. Only
+// applies to asynchronous environments.
+message SetFpsRequest {
+  optional float fps = 1 [default = 15.0];
+}
+
+message SetFpsResponse {}
+
+// Request to change the rendering quality. The resolution of the images will be
+// the same, but the visual aspects and size will differ.
+message SetQualityRequest {
+  enum Quality {
+    QUALITY_UNSPECIFIED = 0;
+    // Low, medium and high correspond to web_{low, medium, high} JPEG quality
+    // settings in Pillow. Please see
+    // https://pillow.readthedocs.io/en/stable/reference/JpegPresets.html for
+    // more information. QUALITY_LOW encodes images faster with smaller size,
+    // but there may be visible defects.
+    QUALITY_LOW = 1;
+    QUALITY_MEDIUM = 2;
+    QUALITY_HIGH = 3;
+  }
+  optional Quality quality = 1;
+}
+
+// Request to get the studies.
+message SetStudiesRequest {}
+
+// A list of studies. This is usually the studies created by the user.
+message SetStudiesResponse {
+  repeated StudySpec studies = 1;
+}
+
+// Information about the current step of the episode being recorded.
+message StepResponse {
+  // Visual rendering of the step.
+  optional bytes image = 1;
+  // 0-based index of the episode in the current session.
+  optional int32 episode_index = 2;
+  // Number of steps in the episode (so far).
+  optional int32 episode_steps = 3;
+  // Environment reward.
+  optional float reward = 4;
+}
+
+// Request to update the metadata of the episode being replayed.
+message UpdateReplayEpisodeRequest {
+  // User notes.
+  optional string notes = 1;
+}
+
+message UpdateReplayEpisodeResponse {
+  // Whether the update is successful or not.
+  optional bool success = 1;
+}
+
+// Encapsulates the requests that are sent from the client to the server.
+// Next ID: 21
+message OperationRequest {
+  oneof type {
+    ActionRequest action = 1;
+    AddEpisodeTagRequest add_episode_tag = 2;
+    AddStepTagRequest add_step_tag = 19;
+    DeleteEpisodeRequest delete_episode = 18;
+    DownloadEpisodesRequest download_episodes = 4;
+    EnableStudyRequest enable_study = 5;
+    ReplayStepRequest replay_step = 6;
+    RemoveEpisodeTagRequest remove_episode_tag = 7;
+    RemoveStepTagRequest remove_step_tag = 20;
+    ReplayEpisodeRequest replay_episode = 8;
+    SaveEpisodeRequest save_episode = 9;
+    SaveStudyRequest save_study = 10;
+    SelectEnvironmentRequest select_environment = 11;
+    SelectStudyRequest select_study = 12;
+    SetCameraRequest set_camera = 17;
+    SetFpsRequest set_fps = 13;
+    SetQualityRequest set_quality = 16;
+    SetStudiesRequest set_studies = 14;
+    UpdateReplayEpisodeRequest update_replay_episode = 15;
+  }
+}
+
+// Encapsulates the responses that are sent from the server to the client.
+// Next ID: 26
+message OperationResponse {
+  oneof type {
+    ActionResponse action = 1;
+    AddEpisodeTagResponse add_episode_tag = 2;
+    AddStepTagResponse add_step_tag = 24;
+    ConfigResponse config = 3;
+    ConfirmSaveResponse confirm_save = 18;
+    DeleteEpisodeResponse delete_episode = 23;
+    DownloadEpisodesResponse download_episodes = 4;
+    EnableStudyResponse enable_study = 5;
+    EpisodesResponse episodes = 20;
+    ErrorResponse error = 21;
+    ReplayStepResponse replay_step = 7;
+    PauseResponse pause = 17;
+    RemoveEpisodeTagResponse remove_episode_tag = 8;
+    RemoveStepTagResponse remove_step_tag = 25;
+    ReplayEpisodeResponse replay_episode = 9;
+    SaveEpisodeResponse save_episode = 10;
+    SaveStudyResponse save_study = 11;
+    SelectEnvironmentResponse select_environment = 12;
+    SelectStudyResponse select_study = 13;
+    SetCameraResponse set_camera = 22;
+    SetFpsResponse set_fps = 14;
+    SetStudiesResponse set_studies = 15;
+    StepResponse step = 19;
+    UpdateReplayEpisodeResponse update_replay_episode = 16;
+  }
+}

@@ -1,0 +1,181 @@
+# Copyright 2021 RLDSCreator Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# RLDS Creator environments.
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@py_deps//:requirements.bzl", "requirement")
+
+package(default_visibility = ["//rlds_creator:__subpackages__"])
+
+py_library(
+    name = "atari_env",
+    srcs = ["atari_env.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//rlds_creator:environment",
+        "//rlds_creator:gym_utils",
+        "//rlds_creator:input_utils",
+        "//rlds_creator:study_py_proto",
+        requirement("atari-py"),
+        requirement("gym"),
+    ],
+)
+
+py_test(
+    name = "atari_env_test",
+    srcs = ["atari_env_test.py"],
+    python_version = "PY3",
+    deps = [
+        ":atari_env",
+        "//rlds_creator:study_py_proto",
+        requirement("absl-py"),
+    ],
+)
+
+py_library(
+    name = "dmlab_env",
+    srcs = ["dmlab_env.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//rlds_creator:environment",
+        "//rlds_creator:input_utils",
+        "//rlds_creator:study_py_proto",
+        requirement("absl-py"),
+        requirement("dm_env"),
+        requirement("gym"),
+        requirement("numpy"),
+    ],
+)
+
+py_test(
+    name = "dmlab_env_test",
+    srcs = ["dmlab_env_test.py"],
+    # Installed in the Docker image.
+    args = ["--dmlab_homepath=/usr/local/lib/python3.8/dist-packages/deepmind_lab"],
+    python_version = "PY3",
+    deps = [
+        ":dmlab_env",
+        "//rlds_creator:study_py_proto",
+        requirement("absl-py"),
+        requirement("numpy"),
+    ],
+)
+
+py_library(
+    name = "net_hack_env",
+    srcs = ["net_hack_env.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//rlds_creator:environment",
+        "//rlds_creator:gym_utils",
+        "//rlds_creator:input_utils",
+        "//rlds_creator:study_py_proto",
+        requirement("Pillow"),
+        requirement("gym"),
+        requirement("nle"),
+        requirement("numpy"),
+    ],
+)
+
+py_test(
+    name = "net_hack_env_test",
+    srcs = ["net_hack_env_test.py"],
+    python_version = "PY3",
+    deps = [
+        ":net_hack_env",
+        "//rlds_creator:study_py_proto",
+        requirement("absl-py"),
+    ],
+)
+
+py_library(
+    name = "procgen_env",
+    srcs = ["procgen_env.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//rlds_creator:environment",
+        "//rlds_creator:gym_utils",
+        "//rlds_creator:input_utils",
+        "//rlds_creator:study_py_proto",
+        requirement("gym"),
+        requirement("procgen"),
+    ],
+)
+
+py_test(
+    name = "procgen_env_test",
+    srcs = ["procgen_env_test.py"],
+    python_version = "PY3",
+    deps = [
+        ":procgen_env",
+        "//rlds_creator:study_py_proto",
+        requirement("absl-py"),
+    ],
+)
+
+py_library(
+    name = "robodesk_env",
+    srcs = ["robodesk_env.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//rlds_creator:environment",
+        "//rlds_creator:gym_utils",
+        "//rlds_creator:input_utils",
+        "//rlds_creator:study_py_proto",
+        requirement("numpy"),
+        requirement("robodesk"),
+    ],
+)
+
+py_test(
+    name = "robodesk_env_test",
+    srcs = ["robodesk_env_test.py"],
+    python_version = "PY3",
+    deps = [
+        ":robodesk_env",
+        "//rlds_creator:environment",
+        "//rlds_creator:study_py_proto",
+        requirement("absl-py"),
+        requirement("numpy"),
+    ],
+)
+
+py_library(
+    name = "robosuite_env",
+    srcs = ["robosuite_env.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//rlds_creator:environment",
+        "//rlds_creator:environment_wrapper",
+        "//rlds_creator:gym_utils",
+        "//rlds_creator:input_utils",
+        "//rlds_creator:study_py_proto",
+        requirement("dm_env"),
+        requirement("numpy"),
+        requirement("robosuite"),
+    ],
+)
+
+py_test(
+    name = "robosuite_env_test",
+    srcs = ["robosuite_env_test.py"],
+    python_version = "PY3",
+    deps = [
+        ":robosuite_env",
+        "//rlds_creator:environment",
+        "//rlds_creator:study_py_proto",
+        requirement("absl-py"),
+        requirement("numpy"),
+    ],
+)
