@@ -223,6 +223,18 @@ EnvironmentSpec message (see study.proto file); these include
     framework and benchmark environments for robot learning; see
     https://robosuite.ai for more information.
 
+On a standard workstation, the overhead of RLDS Creator (i.e. mainly encoding of
+the images and recording of the videos) is between 0.5-2.0 msecs for each step
+depending on the complexity of the environment and the resolution of the images.
+Below, we plot the sample overhead for various Atari, Procgen and Robodesk
+environments using different quality settings.
+
+![Overhead](img/overhead.png)
+
+This is also correlated with the size of the data that is sent to the client.
+
+![Response size](img/response_size.png)
+
 ## Installation
 
 ### Building from the source
