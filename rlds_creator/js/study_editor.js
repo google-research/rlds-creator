@@ -447,12 +447,13 @@ class StudyEditor extends EventTarget {
         }
         const envType = this.lastEnvType_;
         if (envType != EnvironmentSpec.TypeCase.TYPE_NOT_SET) {
-            const env = study.addEnvironmentSpecs()
+            const env = new EnvironmentSpec()
                 .setId(this.getText_('env-id'))
                 .setName(this.getText_('env-name'))
                 .setAdditionalInstructions(
                     this.getText_('additional-instructions'))
                 .setSync(this.isChecked_('sync'));
+            study.addEnvironmentSpecs(env);
             this.maybeSetNumber_(
                 'max-episode-steps', val => env.setMaxEpisodeSteps(val));
             switch (envType) {

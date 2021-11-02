@@ -20,8 +20,8 @@ from typing import Dict, Optional
 import dm_env
 from dm_env import specs
 import numpy as np
+from rlds_creator import camera_observation_wrapper
 from rlds_creator import environment
-from rlds_creator import environment_wrapper
 from rlds_creator import input_utils
 from rlds_creator import study_pb2
 import robosuite
@@ -89,50 +89,18 @@ class DMEnvWrapper(dm_env.Environment):
     self._env.close()
 
 
-class _CameraObsWrapper(environment_wrapper.EnvironmentWrapper):
-  """Environment wrapper that uses image observations as rendered image.
-
-  Using the camera image in the observation dictionary avoid re-rendering the
-  scene and avoid reduced frame rate.
-  """
+class _CameraObsWrapper(camera_observation_wrapper.CameraObservationWrapper):
+  """Camera observation wrapper for a Robosuite environment."""
 
   def __init__(self, env: dm_env.Environment, robosuite_env: base.MujocoEnv,
                camera: str):
-    super().__init__(env)
     self._robosuite_env = robosuite_env
-    self._image = None
-    self._timestep = None
-    self.set_camera(camera)
+    super().__init__(env, camera)
 
-  def _maybe_update_image(self, timestep: dm_env.TimeStep) -> dm_env.TimeStep:
-    """Updates the rendered image from the observation if available."""
-    self._timestep = timestep
-    if self._camera_obs_key in timestep.observation:
-      self._image = timestep.observation[self._camera_obs_key]
-    else:
-      self._image = None
-    return timestep
-
-  def set_camera(self, camera: str):
-    """Sets the camera to render."""
-    self._camera = camera
-    self._camera_obs_key = f'{camera}_image'
-    if self._timestep:
-      self._maybe_update_image(self._timestep)
-
-  def step(self, action) -> dm_env.TimeStep:
-    return self._maybe_update_image(self._environment.step(action))
-
-  def reset(self) -> dm_env.TimeStep:
-    return self._maybe_update_image(self._environment.reset())
-
-  def render(self) -> environment.Image:
+  def _render(self, camera: str) -> environment.Image:
     """Returns the environment as an image."""
-    # Use the image from the last observation if available; otherwise, render.
-    if self._image is not None:
-      return self._image
     image = self._robosuite_env.sim.render(
-        height=CAMERA_HEIGHT, width=CAMERA_WIDTH, camera_name=self._camera)
+        height=CAMERA_HEIGHT, width=CAMERA_WIDTH, camera_name=camera)
     # With opencv image convention the images in the observations will have the
     # correct orientation, but not the image that is rendered from the
     # similation. We invert it.

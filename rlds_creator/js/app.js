@@ -176,18 +176,21 @@ class App {
    */
   handleKeyDown_(e) {
     const keyboardEvent = /** @type {!KeyboardEvent} */ (e);
-    const key = keyboardEvent.key;
-    // Check the camera keys, i.e. 1 to 9.
-    const ord = key.charCodeAt(0);
-    if (ord >= 49 && ord <= 57) {
-      // Camera index is 0-based.
-      this.sendRequest(new OperationRequest().setSetCamera(
-          new SetCameraRequest().setIndex(ord - 49)));
-      return;
+    if (!keyboardEvent.repeat) {
+      const key = keyboardEvent.key;
+      // Check the camera keys, i.e. 1 to 9.
+      const ord = key.charCodeAt(0);
+      if (ord >= 49 && ord <= 57) {
+        // Camera index is 0-based.
+        this.sendRequest(new OperationRequest().setSetCamera(
+            new SetCameraRequest().setIndex(ord - 49)));
+        return;
+      }
+      this.pressedKeys_.add(key);
+      this.sendKeys_();
     }
-    this.pressedKeys_.add(key);
-    this.sendKeys_();
     e.preventDefault();
+    e.stopPropagation();
   }
 
   /**
@@ -198,9 +201,12 @@ class App {
    */
   handleKeyUp_(e) {
     const keyboardEvent = /** @type {!KeyboardEvent} */ (e);
-    this.pressedKeys_.delete(keyboardEvent.key);
-    this.sendKeys_();
+    if (!keyboardEvent.repeat) {
+      this.pressedKeys_.delete(keyboardEvent.key);
+      this.sendKeys_();
+    }
     e.preventDefault();
+    e.stopPropagation();
   }
 
   /**
@@ -934,10 +940,12 @@ class App {
     const request = new DownloadEpisodesRequest();
     for (let i = 0, n = rows.length; i < n; ++i) {
       const row = rows[i];
-      request.addRefs()
-          .setStudyId(/** @type {string} */ (dataset.get(row, 'study')))
-          .setSessionId(/** @type {string} */ (dataset.get(row, 'session')))
-          .setEpisodeId(/** @type {string} */ (dataset.get(row, 'episode')));
+      request.addRefs(
+          new EpisodeRef()
+              .setStudyId(/** @type {string} */ (dataset.get(row, 'study')))
+              .setSessionId(/** @type {string} */ (dataset.get(row, 'session')))
+              .setEpisodeId(
+                  /** @type {string} */ (dataset.get(row, 'episode'))));
     }
     const tags =
         /** @type {!HTMLInputElement} */ (dom.getElement('end_of_episode_tags'))

@@ -21,73 +21,27 @@ user actions, the resulting transitions in the environment and the visual
 output, i.e. rendered images, and other metadata are recorded and stored in a
 format that can be loaded back later for analysis or to train agents.
 
-### How does it work?
-
-RLDS Creator has two components:
-
-*   a server that manages the studies and runs the environments based on user
-    actions, and
-*   a web client that displays the visual representation of the current state in
-    an environment to the user and sends user actions, e.g. keyboard input, to
-    the server
-
-The web client is simply a viewer and the core logic resides in the server. We
-use [WebSockets](https://en.wikipedia.org/wiki/WebSocket) to establish a
-bi-directional (session level) communication channel between the server and the
-client. The protocol followed for recording an episode is as follows:
-
-![Protocol](img/protocol.png)
-
-The study specifications and the metadata about user sessions and recorded
-episodes are stored in a database.
-
-### Workflow
-
-The regular workflow is as follows:
-
-1.  The study designer creates a data collection study, e.g. *action games in
-    Procgen*, specifying
-
-    1.  the specifications of the environments, i.e. *the list of action games
-        in Procgen and their parameters*, and
-    1.  the instructions for the users, i.e. what is the goal of the study and
-        what to do, e.g. *"play the games"*. There can be optional additional
-        instructions for each environment, e.g. *"the goal in this game is to
-        collect the coins and avoid the obstacles and enemies"*.
-
-    and starts the study.
-
-1.  A user opens the online tool, selects the study and starts a session to
-    interact with the environments in the selected study. In a session,
-
-    1.  User selects an environment in the study, e.g. *a particular action game
-        such as "Coinrun"*, and views the instructions for the study and
-        environment, if available.
-    1.  A new episode in the environment begins. In most cases, the environment
-        will be initially in paused state to let the user get ready.
-    1.  User starts working on the episode by interacting with the environment,
-        i.e. sees a visual representation of the current state and takes
-        actions. At any point during the interaction loop, the user can
-
-        1.  Pause the environment temporarily; if it is not unpaused after some
-            time, the session will expire and the episode will be marked as
-            abandoned.
-        1.  Cancel the episode; the episode will be marked as cancelled.
-
-    1.  When the episode ends (with success, e.g. collecting all coints or
-        failure, e.g. hitting an enemy), the user is asked to confirm whether to
-        save it or not. The episode will be marked as completed if confirmed,
-        otherwise as rejected. After this, user can end the session, continue
-        with a new episode of the current environment, or choose another
-        environment in the study.
-
-1.  The study designer queries the sessions and recorded episodes for the study
-    and downloads the data.
-
-It is possible to replay a recorded episode on the client, i.e. view the actions
-of the user, the observation, action and reward for each step of an episode.
-
 ## Usage
+
+### Creating a new study
+
+To create a new study, go to "Studies" tab and click "Create New Study" button.
+This will display the dialog that allows you to enter the specification of the
+study, e.g. its name, description, (additional) instructions and the
+configuration of the environment (e.g. the game and level information for
+Procgen).
+
+![Study dialog](img/edit_study.png)
+
+After saving the study, it will be added to the studies table. You can click on
+the study ID or environment name to test it and record episodes.
+
+#### Editing an existing study
+
+To edit an existing study, go to "Studies" tab and click on its edit button. In
+RLDS Creator, it is possible to define studies with multiple environments (e.g.
+different platform games, or versions of the same environment with different
+parameters), but online editing is limited to studies with a single environment.
 
 ### Data collection
 
@@ -149,26 +103,6 @@ of the user, the observation, action and reward for each step of an episode.
 
     ![Replay](img/replay.png)
 
-### Creating a new study
-
-To create a new study, go to "Studies" tab and click "Create New Study" button.
-This will display the dialog that allows you to enter the specification of the
-study, e.g. its name, description, (additional) instructions and the
-configuration of the environment (e.g. the game and level information for
-Procgen).
-
-![Study dialog](img/edit_study.png)
-
-After saving the study, it will be added to the studies table. You can click on
-the study ID or environment name to test it and record episodes.
-
-#### Editing an existing study
-
-To edit an existing study, go to "Studies" tab and click on its edit button. In
-RLDS Creator, it is possible to define studies with multiple environments (e.g.
-different platform games, or versions of the same environment with different
-parameters), but online editing is limited to studies with a single environment.
-
 ### Downloading the collected data {#download-dataset}
 
 Select a study from the tool and go to "Episodes" tab. On this tab, you can
@@ -204,7 +138,7 @@ the episodes and specify these tags as "end of episode tags" when downloading a
 dataset (C). This will truncate the episodes in the dataset at the corresponding
 steps.
 
-### Supported environments
+## Supported environments
 
 The list of supported environments and their specifications are defined in the
 EnvironmentSpec message (see study.proto file); these include
@@ -274,6 +208,72 @@ By default, the study and episode metadata will be stored in an in-memory SQLite
 database (hence, non-persistent) and the trajectories will be saved under the
 `/tmp/rlds_creator_logs` directory. Please see the command line flags in
 `server.py` file to use more persistent options and for more information.
+
+## How does it work?
+
+RLDS Creator has two components:
+
+*   a server that manages the studies and runs the environments based on user
+    actions, and
+*   a web client that displays the visual representation of the current state in
+    an environment to the user and sends user actions, e.g. keyboard input, to
+    the server
+
+The web client is simply a viewer and the core logic resides in the server. We
+use [WebSockets](https://en.wikipedia.org/wiki/WebSocket) to establish a
+bi-directional (session level) communication channel between the server and the
+client. The protocol followed for recording an episode is as follows:
+
+![Protocol](img/protocol.png)
+
+The study specifications and the metadata about user sessions and recorded
+episodes are stored in a database.
+
+### Workflow
+
+The regular workflow is as follows:
+
+1.  The study designer creates a data collection study, e.g. *action games in
+    Procgen*, specifying
+
+    1.  the specifications of the environments, i.e. *the list of action games
+        in Procgen and their parameters*, and
+    1.  the instructions for the users, i.e. what is the goal of the study and
+        what to do, e.g. *"play the games"*. There can be optional additional
+        instructions for each environment, e.g. *"the goal in this game is to
+        collect the coins and avoid the obstacles and enemies"*.
+
+    and starts the study.
+
+1.  A user opens the online tool, selects the study and starts a session to
+    interact with the environments in the selected study. In a session,
+
+    1.  User selects an environment in the study, e.g. *a particular action game
+        such as "Coinrun"*, and views the instructions for the study and
+        environment, if available.
+    1.  A new episode in the environment begins. In most cases, the environment
+        will be initially in paused state to let the user get ready.
+    1.  User starts working on the episode by interacting with the environment,
+        i.e. sees a visual representation of the current state and takes
+        actions. At any point during the interaction loop, the user can
+
+        1.  Pause the environment temporarily; if it is not unpaused after some
+            time, the session will expire and the episode will be marked as
+            abandoned.
+        1.  Cancel the episode; the episode will be marked as cancelled.
+
+    1.  When the episode ends (with success, e.g. collecting all coints or
+        failure, e.g. hitting an enemy), the user is asked to confirm whether to
+        save it or not. The episode will be marked as completed if confirmed,
+        otherwise as rejected. After this, user can end the session, continue
+        with a new episode of the current environment, or choose another
+        environment in the study.
+
+1.  The study designer queries the sessions and recorded episodes for the study
+    and downloads the data.
+
+It is possible to replay a recorded episode on the client, i.e. view the actions
+of the user, the observation, action and reward for each step of an episode.
 
 ## Acknowledgements
 

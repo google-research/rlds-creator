@@ -441,8 +441,7 @@ class EnvironmentHandler(metaclass=abc.ABCMeta):
     self._record_step(self._env.env().reset())
 
     self._keys = {}
-    self._action = self._env.user_input_to_action(
-        environment.UserInput(keys=self._keys))
+    self._user_input = environment.UserInput(keys=self._keys)
 
     if self._record_videos:
       self._video_file = tempfile.NamedTemporaryFile(suffix='.mp4')
@@ -495,8 +494,11 @@ class EnvironmentHandler(metaclass=abc.ABCMeta):
     """Calls step if the environment is not paused and sends the data."""
     if self._paused:
       return
-    timestep = self._env.env().step(self._action)
-    self._record_step(timestep, self._action)
+    action = self._env.user_input_to_action(self._user_input)
+    if self._sync and action is None:
+      return
+    timestep = self._env.env().step(action)
+    self._record_step(timestep, action)
     self._episode_steps += 1
     self._episode_total_reward += timestep.reward
     self._send_step(timestep.reward)
@@ -1028,8 +1030,11 @@ class EnvironmentHandler(metaclass=abc.ABCMeta):
     controller = (
         environment.Controller.SPACEMOUSE
         if 'SpaceMouse' in controller_id else environment.Controller.DEFAULT)
-    self._action = self._env.user_input_to_action(
-        environment.UserInput(keys=self._keys, controller=controller))
+    # In asynchronous environment, the controller can be stateful. Therefore, we
+    # don't conver the user input to environment action here, but rather in the
+    # _step() method.
+    self._user_input = environment.UserInput(
+        keys=self._keys, controller=controller)
     env_type = (
         EnvType(self._env_spec.WhichOneof('type')) if self._env_spec else None)
     is_procgen = env_type == EnvType.PROCGEN
@@ -1040,7 +1045,7 @@ class EnvironmentHandler(metaclass=abc.ABCMeta):
       # itself.
       self._episode.state = study_pb2.Episode.STATE_CANCELLED
       self._confirm_save()
-    elif self._sync and self._action is not None:
+    elif self._sync:
       self._step()
 
   def _set_camera(self, request: client_pb2.SetCameraRequest):

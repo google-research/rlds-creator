@@ -53,6 +53,17 @@ py_proto_library(
 )
 
 py_library(
+    name = "camera_observation_wrapper",
+    srcs = ["camera_observation_wrapper.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":environment",
+        ":environment_wrapper",
+        requirement("dm_env"),
+    ],
+)
+
+py_library(
     name = "constants",
     srcs = ["constants.py"],
     srcs_version = "PY3",

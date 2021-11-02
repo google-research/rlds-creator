@@ -192,12 +192,28 @@ def _proxy_handler(conn: multiprocessing.connection.Connection,
     conn.close()
 
 
-def create_proxied_env_from_spec(
-    env_spec: study_pb2.EnvironmentSpec,
-    create_env_fn: CreateEnvFn) -> environment.Environment:
-  """Returns a proxied environment that runs in a separate process."""
-  parent_conn, child_conn = multiprocessing.Pipe()
-  p = multiprocessing.Process(
-      target=_proxy_handler, args=(child_conn, env_spec, create_env_fn))
+def create_proxied_env_from_spec(env_spec: study_pb2.EnvironmentSpec,
+                                 create_env_fn: CreateEnvFn,
+                                 mp_context=None) -> environment.Environment:
+  """Creates a proxied environment that runs in a separate process.
+
+  Args:
+    env_spec: Specification of the environment.
+    create_env_fn: Function to create the local environment.
+    mp_context: Multiprocessing context used to create the child process and the
+      communication pipe. If None, then the default multiprocessing library will
+      be used.
+
+  Returns:
+    A proxied environment.
+  """
+  if mp_context:
+    parent_conn, child_conn = mp_context.Pipe()
+    p = mp_context.Process(
+        target=_proxy_handler, args=(child_conn, env_spec, create_env_fn))
+  else:
+    parent_conn, child_conn = multiprocessing.Pipe()
+    p = multiprocessing.Process(
+        target=_proxy_handler, args=(child_conn, env_spec, create_env_fn))
   p.start()
   return EnvironmentProxy(parent_conn, p)

@@ -342,10 +342,9 @@ class EnvironmentHandlerTest(parameterized.TestCase):
             select_environment=client_pb2.SelectEnvironmentResponse(
                 study_id='study', env=env_specs[1])),
     ])
-    # Sanity check. Keys and action should be reset. 4 is the no-action for the
-    # sample environment.
+    # Sanity check. Keys and action should be reset.
     self.assertEqual({}, self.handler._keys)
-    self.assertEqual(4, self.handler._action)
+    self.assertEqual(environment.UserInput(keys={}), self.handler._user_input)
 
   def test_select_missing_environment(self):
     self._select_study(sample_study_spec())
@@ -380,10 +379,10 @@ class EnvironmentHandlerTest(parameterized.TestCase):
             episode_index=1,
             episode_steps=1,
             reward=0))
-    # Sanity check. Keys should contain the canonical code, ArrowUp -> Up. 5 is
-    # the corresponding action in the sample environment.
+    # Sanity check. Keys should contain the canonical code, ArrowUp -> Up.
     self.assertEqual({'Up': 1}, self.handler._keys)
-    self.assertEqual(5, self.handler._action)
+    self.assertEqual(
+        environment.UserInput(keys={'Up': 1}), self.handler._user_input)
 
   def test_action_sync_no_keys(self):
     self._select_environment(sample_study_spec_with_env())

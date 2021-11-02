@@ -156,8 +156,8 @@ py_library(
     srcs = ["robosuite_env.py"],
     srcs_version = "PY3",
     deps = [
+        "//rlds_creator:camera_observation_wrapper",
         "//rlds_creator:environment",
-        "//rlds_creator:environment_wrapper",
         "//rlds_creator:gym_utils",
         "//rlds_creator:input_utils",
         "//rlds_creator:study_py_proto",

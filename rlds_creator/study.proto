@@ -27,7 +27,7 @@ message User {
 }
 
 // Specification of an environment that users interact with.
-// Next ID: 14
+// Next ID: 16
 message EnvironmentSpec {
   // Unique ID of the environment in the study.
   optional string id = 7;
@@ -44,6 +44,7 @@ message EnvironmentSpec {
   // Maximum number of steps in each episode. If not specified, this will depend
   // on the settings of the environments.
   optional int32 max_episode_steps = 10;
+
 
   // Settings for the Procgen environment. See third_party/py/procgen.
   message Procgen {
@@ -149,6 +150,7 @@ message EnvironmentSpec {
     // trajectories.
     optional int32 image_size = 4 [default = 64];
   }
+
 
   // Type of the environment and its settings.
   oneof type {
